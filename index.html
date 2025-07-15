@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Video Checker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #f8f8f8;
+      color: #222;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 15px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      font-size: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      background: #fff;
+      resize: vertical;
+      box-sizing: border-box;
+      height: 120px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 17px;
+      background-color: #cc0000;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 12px;
+      cursor: pointer;
+    }
+
+    .result {
+      margin-top: 20px;
+    }
+
+    .video-block {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-left: 4px solid #cc0000;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .thumb {
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+      object-fit: cover;
+      cursor: pointer;
+    }
+
+    .video-info {
+      margin-left: 12px;
+      flex-grow: 1;
+    }
+
+    .video-title {
+      font-weight: 500;
+      font-size: 13px;
+      line-height: 1.3em;
+    }
+
+    .not-found {
+      color: red;
+      font-weight: 500;
+      font-size: 13px;
+    }
+
+    .video-serial {
+      color: #f1c40f; /* Yellow */
+      font-weight: bold;
+      margin-right: 6px;
+    }
+
+    a {
+      font-size: 12px;
+      color: #0066cc;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+      .thumb {
+        width: 90px;
+        height: 90px;
+      }
+
+      .video-title {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🎬 YouTube Video Checker</h2>
+  <textarea id="ytLinks" placeholder="1 https://youtu.be/BHSuKat96wI&#10;2 https://youtu.be/fakeid123"></textarea>
+  <button onclick="checkVideos()">Submit</button>
+
+  <div id="results" class="result"></div>
+
+  <script>
+    function extractVideoID(url) {
+      const regExp = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|embed)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = url.match(regExp);
+      return match ? match[1] : null;
+    }
+
+    async function checkVideos() {
+      const input = document.getElementById("ytLinks").value.trim();
+      const lines = input.split("\n");
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "";
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        let serial = "";
+        let url = line;
+
+        const match = line.match(/^(\d+)\.?\s+(https?:\/\/[^\s]+)$/);
+        if (match) {
+          serial = match[1];
+          url = match[2];
+        } else {
+          serial = (i + 1).toString();
+        }
+
+        const videoId = extractVideoID(url);
+        const block = document.createElement("div");
+        block.className = "video-block";
+
+        if (!videoId) {
+          block.innerHTML = `
+            <div class="video-title">
+              <span class="video-serial">${serial}</span>
+              <span class="not-found">❌ Not Found</span><br>
+              <a href="${url}" target="_blank">${url}</a>
+            </div>
+          `;
+        } else {
+          try {
+            const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+            const data = await res.json();
+            block.innerHTML = `
+              <img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" class="thumb" onclick="window.open('https://youtu.be/${videoId}', '_blank')">
+              <div class="video-info">
+                <div class="video-title">
+                  <span class="video-serial">${serial}</span>${data.title}
+                </div>
+              </div>
+            `;
+          } catch (e) {
+            block.innerHTML = `
+              <div class="video-title">
+                <span class="video-serial">${serial}</span>
+                <span class="not-found">❌ Not Found</span><br>
+                <a href="${url}" target="_blank">${url}</a>
+              </div>
+            `;
+          }
+        }
+
+        resultsDiv.appendChild(block);
+      }
+    }
+  </script>
+
+</body>
+</html>
