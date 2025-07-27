@@ -2,189 +2,203 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>YouTube Video Checker</title>
+  <title>🎬 Video Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
     body {
-      background: #121212;
-      color: #f1f1f1;
+      background: linear-gradient(135deg, #0d0d0d, #1c1c1c);
+      color: #fff;
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 15px;
+      padding: 20px;
     }
 
     h2 {
       text-align: center;
-      margin-top: 10px;
+      font-size: 30px;
+      margin-bottom: 20px;
+      color: #ff4d4d;
+      text-shadow: 0 0 10px rgba(255, 77, 77, 0.8);
     }
 
     textarea {
       width: 100%;
-      font-size: 16px;
-      padding: 12px;
+      height: 140px;
+      padding: 14px;
+      font-size: 15px;
       border-radius: 10px;
-      border: 1px solid #444;
+      border: none;
       background: #1e1e1e;
-      color: #f1f1f1;
+      color: #fff;
       resize: vertical;
-      box-sizing: border-box;
-      height: 120px;
+      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.1);
     }
 
     button {
       width: 100%;
-      padding: 12px;
+      margin-top: 16px;
+      padding: 14px;
       font-size: 17px;
-      background-color: #cc0000;
+      background: linear-gradient(90deg, #ff0033, #ff6600);
       color: white;
       border: none;
       border-radius: 10px;
-      margin-top: 12px;
       cursor: pointer;
+      box-shadow: 0 0 12px rgba(255, 100, 100, 0.6);
+      transition: all 0.3s ease;
     }
 
-    .result {
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    #loader {
+      display: none;
+      text-align: center;
       margin-top: 20px;
+      font-size: 18px;
+      color: #ffd700;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0.5; }
     }
 
     .video-block {
-      display: flex;
-      align-items: center;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-left: 4px solid #cc0000;
+      margin-top: 16px;
+      padding: 16px;
+      border-left: 5px solid;
       border-radius: 10px;
-      padding: 10px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 6px rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(4px);
+      animation: fadeInUp 0.4s ease both;
+      transition: transform 0.2s ease;
+      font-size: 16px;
+      line-height: 1.6;
     }
 
-    .thumb {
-      width: 100px;
-      height: 100px;
-      border-radius: 8px;
-      object-fit: cover;
-      cursor: pointer;
+    .video-block:hover {
+      transform: scale(1.01);
+      background: rgba(255, 255, 255, 0.07);
     }
 
-    .video-info {
-      margin-left: 12px;
-      flex-grow: 1;
-    }
-
-    .video-title {
-      font-weight: 500;
-      font-size: 13px;
-      line-height: 1.3em;
+    .found {
+      border-color: #2ecc71;
+      color: #2ecc71;
     }
 
     .not-found {
-      color: #ff4c4c;
-      font-weight: 500;
-      font-size: 13px;
+      border-color: #e74c3c;
+      color: #e74c3c;
     }
 
-    .video-serial {
-      color: #f1c40f;
-      font-weight: bold;
-      margin-right: 6px;
-    }
-
-    a {
-      font-size: 12px;
-      color: #1e90ff;
-      text-decoration: none;
-    }
-
-    a:hover {
+    .not-found a {
+      color: #ff8a8a;
       text-decoration: underline;
+      word-break: break-all;
+      display: inline-block;
+      margin-top: 4px;
     }
 
-    @media (max-width: 480px) {
-      .thumb {
-        width: 90px;
-        height: 90px;
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
       }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
-      .video-title {
-        font-size: 12px;
-      }
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #ff4d4d;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1a1a1a;
     }
   </style>
 </head>
 <body>
 
-  <h2>🎬 YouTube Video Checker</h2>
-  <textarea id="ytLinks" placeholder="1 https://youtu.be/BHSuKat96wI&#10;2 https://youtu.be/fakeid123"></textarea>
-  <button onclick="checkVideos()">Submit</button>
+  <h2>AmitTG</h2>
 
-  <div id="results" class="result"></div>
+  <textarea id="ytLinks" placeholder="1 https://youtu.be/xyz1234..."></textarea>
+  <button onclick="checkAllVideos()">Track Video</button>
+
+  <div id="loader">⏳ Checking...</div>
+  <div id="results"></div>
 
   <script>
+    const API_KEY = "AIzaSyBLXwBhG9fcmTBEXrUsrO212k5bg2dtLj0";
+
     function extractVideoID(url) {
-      const regExp = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|embed)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const regExp = /(?:v=|youtu\.be\/|embed\/|watch\?v=)([a-zA-Z0-9_-]{11})/;
       const match = url.match(regExp);
       return match ? match[1] : null;
     }
 
-    async function checkVideos() {
+    async function checkAllVideos() {
       const input = document.getElementById("ytLinks").value.trim();
-      const lines = input.split("\n");
-      const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = "";
+      const lines = input.split("\n").filter(Boolean);
+      const loader = document.getElementById("loader");
+      const results = document.getElementById("results");
+      results.innerHTML = "";
+      loader.style.display = "block";
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
-        if (!line) continue;
-
-        let serial = "";
+        let serial = i + 1;
         let url = line;
-
         const match = line.match(/^(\d+)\.?\s+(https?:\/\/[^\s]+)$/);
         if (match) {
           serial = match[1];
           url = match[2];
-        } else {
-          serial = (i + 1).toString();
         }
 
         const videoId = extractVideoID(url);
-        const block = document.createElement("div");
-        block.className = "video-block";
+        const div = document.createElement("div");
+        div.className = "video-block";
 
         if (!videoId) {
-          block.innerHTML = `
-            <div class="video-title">
-              <span class="video-serial">${serial}</span>
-              <span class="not-found">❌ Not Found</span><br>
-              <a href="${url}" target="_blank">${url}</a>
-            </div>
-          `;
+          div.classList.add("not-found");
+          div.innerHTML = `${serial}. ❌ Invalid link<br><a href="${url}" target="_blank">${url}</a>`;
         } else {
+          const videoUrl = `https://youtu.be/${videoId}`;
           try {
-            const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+            const api = `https://www.googleapis.com/youtube/v3/videos?part=status&id=${videoId}&key=${API_KEY}`;
+            const res = await fetch(api);
             const data = await res.json();
-            block.innerHTML = `
-              <img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" class="thumb" onclick="window.open('https://youtu.be/${videoId}', '_blank')">
-              <div class="video-info">
-                <div class="video-title">
-                  <span class="video-serial">${serial}</span>${data.title}
-                </div>
-              </div>
-            `;
+
+            if (data.items && data.items.length > 0 && data.items[0].status.uploadStatus !== "deleted") {
+              div.classList.add("found");
+              div.textContent = `${serial}. ✅ Available`;
+            } else {
+              div.classList.add("not-found");
+              div.innerHTML = `${serial}. ❌ Not Found<br><a href="${videoUrl}" target="_blank">${videoUrl}</a>`;
+            }
           } catch (e) {
-            block.innerHTML = `
-              <div class="video-title">
-                <span class="video-serial">${serial}</span>
-                <span class="not-found">❌ Not Found</span><br>
-                <a href="${url}" target="_blank">${url}</a>
-              </div>
-            `;
+            div.classList.add("not-found");
+            div.innerHTML = `${serial}. ⚠️ Error checking<br><a href="${videoUrl}" target="_blank">${videoUrl}</a>`;
           }
         }
 
-        resultsDiv.appendChild(block);
+        results.appendChild(div);
       }
+
+      loader.style.display = "none";
     }
   </script>
 
