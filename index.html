@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🎬 Video Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0d0d0d, #1c1c1c);
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 30px;
+      margin-bottom: 20px;
+      color: #ff4d4d;
+      text-shadow: 0 0 10px rgba(255, 77, 77, 0.8);
+    }
+
+    textarea {
+      width: 100%;
+      height: 140px;
+      padding: 14px;
+      font-size: 15px;
+      border-radius: 10px;
+      border: none;
+      background: #1e1e1e;
+      color: #fff;
+      resize: vertical;
+      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.1);
+    }
+
+    button {
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px;
+      font-size: 17px;
+      background: linear-gradient(90deg, #ff0033, #ff6600);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(255, 100, 100, 0.6);
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    #loader {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 18px;
+      color: #ffd700;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0.5; }
+    }
+
+    .video-block {
+      margin-top: 16px;
+      padding: 16px;
+      border-left: 5px solid;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(4px);
+      animation: fadeInUp 0.4s ease both;
+      transition: transform 0.2s ease;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .video-block:hover {
+      transform: scale(1.01);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .found {
+      border-color: #2ecc71;
+      color: #2ecc71;
+    }
+
+    .not-found {
+      border-color: #e74c3c;
+      color: #e74c3c;
+    }
+
+    .not-found a {
+      color: #ff8a8a;
+      text-decoration: underline;
+      word-break: break-all;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #ff4d4d;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>AmitTG</h2>
+
+  <textarea id="ytLinks" placeholder="1 https://youtu.be/xyz1234..."></textarea>
+  <button onclick="checkAllVideos()">Track Video</button>
+
+  <div id="loader">⏳ Checking...</div>
+  <div id="results"></div>
+
+  <script>
+    // 🔥 Firebase Init
+    const firebaseConfig = {
+      apiKey: "AIzaSyDOSmFSpbsfXveaDpozsjDwTbc3yjmcAhg",
+      authDomain: "amittg-tool.firebaseapp.com",
+      databaseURL: "https://amittg-tool-default-rtdb.firebaseio.com",
+      projectId: "amittg-tool",
+      storageBucket: "amittg-tool.appspot.com",
+      messagingSenderId: "873427375036",
+      appId: "1:873427375036:web:315252c835a9dcf6f111b9",
+      measurementId: "G-JTD2DS401H"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const ytCollection = db.collection("youtube_links");
+
+    const textarea = document.getElementById("ytLinks");
+
+    // 📥 Load Firestore links
+    ytCollection.orderBy("timestamp", "asc").onSnapshot(snapshot => {
+      const docs = snapshot.docs.map(doc => ({
+        serial: parseInt(doc.data().serial),
+        link: doc.data().link
+      }));
+      docs.sort((a, b) => a.serial - b.serial);
+      const lines = docs.map(doc => `${doc.serial} ${doc.link}`);
+      textarea.value = lines.join("\n");
+    });
+
+    // 📦 Extract Video ID
+    function extractVideoID(url) {
+      const regExp = /(?:v=|youtu\.be\/|embed\/|watch\?v=)([a-zA-Z0-9_-]{11})/;
+      const match = url.match(regExp);
+      return match ? match[1] : null;
+    }
+
+    // ✅ Track all videos
+    async function checkAllVideos() {
+      const input = textarea.value.trim();
+      const lines = input.split("\n").filter(Boolean);
+      const loader = document.getElementById("loader");
+      const results = document.getElementById("results");
+      results.innerHTML = "";
+      loader.style.display = "block";
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        let serial = i + 1;
+        let url = line;
+        const match = line.match(/^(\d+)\.?\s+(https?:\/\/[^\s]+)$/);
+        if (match) {
+          serial = match[1];
+          url = match[2];
+        }
+
+        const videoId = extractVideoID(url);
+        const div = document.createElement("div");
+        div.className = "video-block";
+
+        if (!videoId) {
+          div.classList.add("not-found");
+          div.innerHTML = `${serial}. ❌ Invalid link<br><a href="${url}" target="_blank">${url}</a>`;
+        } else {
+          const videoUrl = `https://youtu.be/${videoId}`;
+          try {
+            const api = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${videoId}&key=AIzaSyBLXwBhG9fcmTBEXrUsrO212k5bg2dtLj0`;
+            const res = await fetch(api);
+            const data = await res.json();
+
+            if (data.items && data.items.length > 0 && data.items[0].status.uploadStatus !== "deleted") {
+              const channelTitle = data.items[0].snippet.channelTitle;
+              div.classList.add("found");
+              div.innerHTML = `${serial}. ✅ <a href="${videoUrl}" target="_blank" style="color:#2ecc71; text-decoration:underline;">${channelTitle}</a>`;
+            } else {
+              div.classList.add("not-found");
+              div.innerHTML = `${serial}. ❌ Not Found<br><a href="${videoUrl}" target="_blank">${videoUrl}</a>`;
+            }
+          } catch (e) {
+            div.classList.add("not-found");
+            div.innerHTML = `${serial}. ⚠️ Error checking<br><a href="${videoUrl}" target="_blank">${videoUrl}</a>`;
+          }
+        }
+
+        results.appendChild(div);
+      }
+
+      loader.style.display = "none";
+    }
+  </script>
+
+</body>
+</html>
